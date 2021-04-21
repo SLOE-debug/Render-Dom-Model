@@ -21,7 +21,7 @@ export default class {
       this.data.push({
         name: dataName,
         age: 18,
-        if: parseFloat(dataName) > 0.5,
+        if: true,
       });
     }
   }
