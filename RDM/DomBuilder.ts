@@ -12,7 +12,10 @@ export default class DomBuilder {
   Dom: HTMLElement = null;
   IsLoad = false;
   Index = 0;
-  ForLocation: { Action: string } = { Action: "" };
+  ForLocation: { Action: string; BrotherNodes: Array<DomBuilder> } = {
+    Action: "",
+    BrotherNodes: [],
+  };
   constructor(
     _DomModels: Array<DomBuilder>,
     _Module: { [x: string]: any; Render: Function }
@@ -62,7 +65,10 @@ export default class DomBuilder {
     return this;
   }
 
-  public setForLocation(_location: { Action: string }) {
+  public setForLocation(_location: {
+    Action: string;
+    BrotherNodes: Array<DomBuilder>;
+  }) {
     this.ForLocation = _location;
     return this;
   }
@@ -157,7 +163,7 @@ export default class DomBuilder {
         };
       })(this.AttrModel[key]);
     }
-    this.FuncHandler = this.AttrModel[key];
+    this.FuncHandler = this.AttrModel[key].bind(this.Module);
     this.Dom.addEventListener(key, this.FuncHandler);
   }
   BindHandler;
@@ -167,11 +173,13 @@ export default class DomBuilder {
     let EventType = "input";
     if (this.Dom.nodeName === "SELECT") {
       EventType = "change";
+      if (!this.Dom[key]) (this.Dom as HTMLSelectElement).selectedIndex = -1;
     }
     this.Dom.removeEventListener(EventType, this.BindHandler);
     this.BindHandler = () => {
-      this.AttrModel[key].Prop.Item[this.AttrModel[key].Prop.key] = (this
-        .Dom as any).value;
+      this.AttrModel[key].Prop.Item[this.AttrModel[key].Prop.key] = (
+        this.Dom as any
+      ).value;
     };
     this.Dom.addEventListener(EventType, this.BindHandler);
   }
@@ -279,6 +287,11 @@ export default class DomBuilder {
       BindFuncArr[i]();
     }
   }
+  private DeleteDomModelByModel(delDomModel) {
+    let popIndex = this.DomModels.findIndex((m) => m == delDomModel);
+    this.DomModels.splice(popIndex, 1);
+  }
+
   ContinuetoCycle = true;
   ChildDomArr: Array<DomBuilder> = [];
   public builder() {
@@ -325,7 +338,10 @@ export default class DomBuilder {
                     .setForIndex(
                       this.AttrModel["f"].length - (Type.args.length - i)
                     )
-                    .setForLocation({ Action: Type.name })
+                    .setForLocation({
+                      Action: Type.name,
+                      BrotherNodes: this.ChildDomArr,
+                    })
                     .setParentDom(this.ParentDom)
                     .builder()
                 );
@@ -338,6 +354,9 @@ export default class DomBuilder {
                 ].Dom.parentElement.removeChild(
                   this.ChildDomArr[this.ChildDomArr.length - 1].Dom
                 );
+                this.DeleteDomModelByModel(
+                  this.ChildDomArr[this.ChildDomArr.length - 1]
+                );
                 this.ChildDomArr.pop();
               }
               break;
@@ -346,6 +365,7 @@ export default class DomBuilder {
                 this.ChildDomArr[0].Dom.parentElement.removeChild(
                   this.ChildDomArr[0].Dom
                 );
+                this.DeleteDomModelByModel(this.ChildDomArr[0]);
                 this.ChildDomArr.shift();
               }
               break;
@@ -353,9 +373,8 @@ export default class DomBuilder {
             case "sort":
               let HtmlModel = this.Module.Render();
               for (let i = 0; i < this.ChildDomArr.length; i++) {
-                this.ChildDomArr[i].Item[
-                  this.AttrModel["itemas"]
-                ] = this.AttrModel["f"][i];
+                this.ChildDomArr[i].Item[this.AttrModel["itemas"]] =
+                  this.AttrModel["f"][i];
                 this.ChildDomArr[i]
                   .setHtmlModel(HtmlModel)
                   .setLoadState(true)
@@ -363,15 +382,17 @@ export default class DomBuilder {
               }
               break;
           }
-          if (this.ParentDom.nodeName === "SELECT") {
-            (this.ParentDom as HTMLSelectElement).value = "";
-          }
+          // if (
+          //   this.ParentDom.nodeName.toLowerCase() === "select" &&
+          //   (this.ParentDom as HTMLSelectElement).selectedIndex != -1 &&
+          //   (this.ParentDom as HTMLSelectElement).value == ''
+          // )
+          //   (this.ParentDom as HTMLSelectElement).selectedIndex = -1;
           for (let i = 0; i < this.ChildDomArr.length; i++) {
             this.ChildDomArr[i].Index = i;
           }
-          RDM.$DomForTempLate[DomForTempLateIndex].len = this.AttrModel[
-            "f"
-          ].length;
+          RDM.$DomForTempLate[DomForTempLateIndex].len =
+            this.AttrModel["f"].length;
         },
       });
       for (let i = 0; i < this.AttrModel["f"].length; i++) {
@@ -399,21 +420,34 @@ export default class DomBuilder {
       return this.ChildDomArr as any;
     }
     this.Dom = document.createElement(
-      this.HtmlElementKey.replace(/_/g, "").replace(/[0-9]/g, "")
+      this.HtmlElementKey.search(/h[0-9]/gi) >= 0
+        ? this.HtmlElementKey.replace(/_/g, "")
+        : this.HtmlElementKey.replace(/_/g, "").replace(/[0-9]/g, "")
     );
     this.DecorateDomAttr();
     let InteriorDom = this.FakeDom ? this.FakeDom : this.Dom;
     switch (this.ForLocation.Action) {
       case "unshift":
-        if (this.ParentDom.children.length === 0) {
-          this.ParentDom.appendChild(InteriorDom);
+        if (this.ForLocation.BrotherNodes.length != 0) {
+          this.ForLocation.BrotherNodes[0].Dom.before(InteriorDom);
         } else {
-          this.ParentDom.insertBefore(InteriorDom, this.ParentDom.children[0]);
+          if (this.ParentDom.children.length === 0) {
+            this.ParentDom.appendChild(InteriorDom);
+          } else {
+            this.ParentDom.insertBefore(
+              InteriorDom,
+              this.ParentDom.children[0]
+            );
+          }
         }
         break;
       case "push":
       default:
-        this.ParentDom.appendChild(InteriorDom);
+        if (this.ForLocation.BrotherNodes.length != 0)
+          this.ForLocation.BrotherNodes[
+            this.ForLocation.BrotherNodes.length - 1
+          ].Dom.after(InteriorDom);
+        else this.ParentDom.appendChild(InteriorDom);
         break;
     }
     this.ForLocation.Action = "";

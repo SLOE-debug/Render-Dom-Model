@@ -1,6 +1,6 @@
 import { Bind, Watch } from "../RDM/PublicLib";
 
-export default class {
+export default class test {
   @Watch(function (nv, _ov) {
     this.data2[this.EditIndex].name = nv;
   })
@@ -25,7 +25,7 @@ export default class {
       });
     }
   }
-  Render() {
+  Render(): object {
     return {
       input: {
         if: this.data2.length !== 0,

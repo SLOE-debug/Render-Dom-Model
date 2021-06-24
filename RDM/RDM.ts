@@ -9,7 +9,7 @@ export default class RDM {
   $DomModels: Array<DomBuilder> = [];
 
   /**根节点碎片 */
-  $Document: HTMLElement = document.createElement("div");
+  $Document: any = document.createDocumentFragment();
 
   /**循环节点模板数组 也就是所有带 f属性 的节点 */
   static $DomForTempLate: Array<{
@@ -197,6 +197,16 @@ export default class RDM {
   RenderHTMLModel(HTMLModel: object, ParentDom: HTMLElement) {
     //循环对象中的键来创建 节点建造者对象 来渲染节点
     for (const key in HTMLModel) {
+      if (
+        typeof HTMLModel[key] == "function" &&
+        HTMLModel[key].prototype.hasOwnProperty("Render")
+      ) {
+        setTimeout(() => {
+          new RDM(HTMLModel[key]);
+        }, 0);
+        continue;
+      }
+
       new DomBuilder(this.$DomModels, this.$Module)
         .setHtmlModelProp([key]) //设置节点的层级位置 ['div']
         .setHtmlElementKey(key) //设置当前节点的 tagName
