@@ -18,7 +18,7 @@ export class VirtualNode {
     Item: object;
     ItemAs: string;
     arrlen: number;
-    BeforeDom: ChildNode;
+    BeforeDom: VirtualNode;
   } = {
     arr: [],
     index: -1,
@@ -48,7 +48,7 @@ export class VirtualNode {
   public SetLoopInfoForCurrentNode(
     _index: number,
     _arr: Array<any>,
-    _beforeDom: ChildNode
+    _beforeDom: VirtualNode
   ) {
     this.LoopInfo.arr = _arr;
     this.LoopInfo.index = _index;
@@ -64,16 +64,14 @@ export class VirtualNode {
 
   public LoopNode_push(_params: Array<any>) {
     _params.forEach(() => {
+      let Brother =
+        this.Parent.LoopNodeChildrens[this.Parent.LoopNodeChildrens.length - 1];
       let ChildrenNode = new VirtualNode(this.NodeLocation, this.ModuleInstance)
         .SetParentNode(this.Parent)
         .SetLoopInfoForCurrentNode(
           this.LoopInfo.arr.length - 1,
           this.LoopInfo.arr,
-          this.Parent.LoopNodeChildrens.length == 0
-            ? this.LoopInfo.BeforeDom
-            : this.Parent.LoopNodeChildrens[
-                this.Parent.LoopNodeChildrens.length - 1
-              ].NodeDom
+          Brother || this.LoopInfo.BeforeDom
         )
         .SetNodeStruct(this.LoopTemplate)
         .Builder();
@@ -84,9 +82,14 @@ export class VirtualNode {
 
   public LoopNode_pop() {
     if (this.Parent.LoopNodeChildrens.length <= 0) return;
-    this.Parent.LoopNodeChildrens[
-      this.Parent.LoopNodeChildrens.length - 1
-    ].NodeDom.remove();
+    let PopNode =
+      this.Parent.LoopNodeChildrens[this.Parent.LoopNodeChildrens.length - 1];
+    PopNode.NodeDom.remove();
+    PopNode.FakeNodeDom?.remove();
+    this.Parent.Childrens.splice(
+      this.Parent.Childrens.findIndex((v) => v == PopNode),
+      1
+    );
     this.Parent.LoopNodeChildrens.pop();
   }
 
@@ -139,8 +142,9 @@ export class VirtualNode {
     this.LoopInfo.arr = arr;
     this.LoopInfo.arrlen = arr.length;
     delete this.LoopTemplate["f"];
+    this.LoopInfo.BeforeDom =
+      this.Parent.Childrens[this.Parent.Childrens.length - 1];
     this.Parent.Childrens.push(this);
-    this.LoopInfo.BeforeDom = this.Parent.NodeDom.lastChild;
     for (let i = 0; i < arr.length; i++) {
       let ChildrenNode = new VirtualNode(this.NodeLocation, this.ModuleInstance)
         .SetParentNode(this.Parent)
@@ -186,7 +190,8 @@ export class VirtualNode {
   private DecorateNode_if(key) {
     let Oldif = this.NodeStruct[key].toString();
     this.NodeStruct[key] = this.NodeStruct[key].toString() == "true";
-    if (!this.NodeStruct[key]) this.FakeNodeDom = document.createComment("");
+    if (!this.NodeStruct[key] && !this.FakeNodeDom)
+      this.FakeNodeDom = document.createComment("");
     if (this.LoadComplete) {
       let ParentDom = this.Parent ? this.Parent.NodeDom : document.body;
       ParentDom.replaceChild(
@@ -194,6 +199,7 @@ export class VirtualNode {
         !this.NodeStruct[key] ? this.NodeDom : this.FakeNodeDom
       );
     }
+    if (this.NodeStruct[key]) this.FakeNodeDom = null;
     this.NodeStruct[key] = Oldif;
   }
 
@@ -256,7 +262,9 @@ export class VirtualNode {
       if (this.Parent)
         this.Parent.NodeDom.appendChild(this.FakeNodeDom || this.NodeDom);
     } else {
-      this.LoopInfo.BeforeDom.after(this.FakeNodeDom || this.NodeDom);
+      let PreNode =
+        this.LoopInfo.BeforeDom.FakeNodeDom || this.LoopInfo.BeforeDom.NodeDom;
+      PreNode.after(this.FakeNodeDom || this.NodeDom);
     }
     return this;
   }

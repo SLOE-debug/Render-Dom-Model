@@ -40,7 +40,8 @@ export default class example extends RDMModule {
         button: {
           title: "添加",
           click: () => {
-            this.arr.push({ value: Math.random().toString(), if: true });
+            let num = Math.random();
+            this.arr.push({ value: num, if: num > 0.5 });
           },
         },
         button1: {
