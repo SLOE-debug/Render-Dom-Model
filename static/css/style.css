@@ -2,7 +2,7 @@
   width: 40%;
   margin: 0 auto;
 }
-input,
+.r_input,
 select {
   -webkit-appearance: none;
   background-color: #fff;
@@ -22,13 +22,13 @@ select {
   width: 100%;
   font-size: 14px;
 }
-input::placeholder {
+.r_input::placeholder {
   color: #c0c4cc;
 }
-input:focus {
+.r_input:focus {
   border: 1px solid #409eff;
 }
-input:hover {
+.r_input:hover {
   border-color: #c0c4cc;
 }
 

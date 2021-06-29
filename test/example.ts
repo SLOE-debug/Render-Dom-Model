@@ -42,6 +42,14 @@ export default class example {
             this.arr.pop();
           },
         },
+        div: {
+          input: { type: "radio" },
+          title: "小于0.5的显示",
+          input1: { type: "radio" },
+          title1: "大于0.5的显示",
+          input2: { type: "radio" },
+          title2: "全部显示",
+        },
         div2: {
           f: this.arr,
           itemas: "m",

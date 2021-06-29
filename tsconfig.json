@@ -17,6 +17,6 @@
     "noUnusedLocals": false,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["RDM/*.ts", "test/*.ts", "main.ts", "RDM0.2/*.ts"], // 要打包的文件
+  "include": ["main.ts", "RDM0.2/*.ts"], // 要打包的文件 "RDM/*.ts", "test/*.ts"
   "exclude": ["node_modules", "*.test.ts"]
 }

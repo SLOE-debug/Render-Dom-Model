@@ -19,31 +19,29 @@ export default class RDM {
           Array.prototype[FuncName[i]]
         );
       }
-    }, 0);
+    });
   }
 
   AopFunc(ArrFunc: Function): any {
     let _self = this;
-    let ArrModifyLog = [];
     return function () {
       let FuncArgs = Array.from(arguments);
       ArrFunc.apply(this, FuncArgs);
-      if (FuncArgs.filter((a) => a["$_a0$bW$7$"]).length != 0) return;
-      ArrModifyLog.push({
-        ActionType: ArrFunc.name,
-        params: FuncArgs,
-        Monitor: _self.Monitor.bind(_self),
-        $_a0$bW$7$: true,
-      });
-      if (_self.LazyUpdate) {
-        clearTimeout(_self.LazyUpdate);
-      }
-      _self.LazyUpdate = setTimeout(() => {
-        ArrModifyLog.forEach((a) => {
-          _self.RootNodes.forEach((n) => n.DiffLoopNode(a));
+      _self.RootNodes.forEach((n) => {
+        n.DiffLoopNode({
+          ActionType: ArrFunc.name,
+          params: FuncArgs,
         });
-        ArrModifyLog = [];
-      }, 1);
+      });
+      if (_self.LazyUpdate) clearTimeout(_self.LazyUpdate);
+      _self.LazyUpdate = setTimeout(() => {
+        let NewNodeStruct = _self.ModuleInstance.Render();
+        _self.RootNodes.forEach((m) =>
+          m.DiffNodeStruct({ ...NewNodeStruct[m.NodeLocation] })
+        );
+        _self.Monitor.bind(_self, [this])();
+        _self.LazyUpdate = null;
+      });
     };
   }
 
@@ -76,12 +74,14 @@ export default class RDM {
   }
 
   RenderHTML() {
-    for (const key in this.HTMLStruct) {
-      let RootNode = new VirtualNode(key, this.ModuleInstance)
-        .SetNodeStruct(this.HTMLStruct[key])
-        .Builder();
-      this.RootNodes.push(RootNode);
-      document.body.appendChild(RootNode.FakeNodeDom || RootNode.NodeDom);
-    }
+    window.onload = () => {
+      for (const key in this.HTMLStruct) {
+        let RootNode = new VirtualNode(key, this.ModuleInstance)
+          .SetNodeStruct(this.HTMLStruct[key])
+          .Builder();
+        this.RootNodes.push(RootNode);
+        document.body.appendChild(RootNode.FakeNodeDom || RootNode.NodeDom);
+      }
+    };
   }
 }

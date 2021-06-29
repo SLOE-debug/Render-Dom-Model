@@ -5,8 +5,7 @@ export class VirtualNode {
   Childrens: Array<VirtualNode> = [];
   LoopNodeChildrens: Array<VirtualNode> = [];
   NodeStruct: object = {};
-  NodeDomContent: Text = document.createTextNode("");
-  ExistNodeText = false;
+  NodeDomContents: Array<Text> = [];
   Parent: VirtualNode;
   NodeDom: HTMLElement;
   ModuleInstance: RDMModule;
@@ -93,23 +92,13 @@ export class VirtualNode {
     this.Parent.LoopNodeChildrens.pop();
   }
 
-  public DiffLoopNode(_modifyInfo: {
-    ActionType: string;
-    params: Array<any>;
-    Monitor: Function;
-  }) {
+  public DiffLoopNode(_modifyInfo: { ActionType: string; params: Array<any> }) {
     this.Childrens.forEach((c) => c.DiffLoopNode(_modifyInfo));
     if (this.IsLoopTemplate) {
-      if (
-        this.LoopInfo.arrlen != this.LoopInfo.arr.length ||
-        _modifyInfo["$_a0$bW$7$"]
-      ) {
+      if (this.LoopInfo.arrlen != this.LoopInfo.arr.length) {
         let value;
         if (this.Parent) value = (this.Parent.NodeDom as any)["value"];
         this.LoopInfo.arrlen = this.LoopInfo.arr.length;
-        setTimeout(() => {
-          _modifyInfo.Monitor(this.LoopInfo.arr);
-        }, 0);
         this["LoopNode_" + _modifyInfo.ActionType](_modifyInfo.params);
         (this.Parent.NodeDom as any)["value"] = value;
       }
@@ -158,7 +147,13 @@ export class VirtualNode {
 
   InputEvent: EventListenerOrEventListenerObject;
   private DecorateNode_value(key) {
-    this.NodeDom[key] = this.NodeStruct[key];
+    if ((this.NodeDom as HTMLInputElement).type == "radio") {
+      key = "data_value";
+      if (this.BindProp.m)
+        if (this.BindProp.m[this.BindProp.k] == this.NodeStruct[key])
+          (this.NodeDom as HTMLInputElement).checked = true;
+    }
+    this.NodeDom["value"] = this.NodeStruct[key] || "";
     if (this.InputEvent) return;
     let EventType = this.NodeDom.nodeName == "INPUT" ? "input" : "change";
     if (this.InputEvent)
@@ -169,12 +164,14 @@ export class VirtualNode {
     this.NodeDom.addEventListener(EventType, this.InputEvent);
   }
 
-  private DecorateNode_title(key) {
-    if (!this.ExistNodeText) {
-      this.NodeDom.appendChild(this.NodeDomContent);
-      this.ExistNodeText = true;
+  private DecorateNode_title(key: string) {
+    if (!this.LoadComplete) {
+      let TextNode = document.createTextNode(this.NodeStruct[key]);
+      this.NodeDomContents.push(TextNode);
+      this.NodeDom.appendChild(TextNode);
     }
-    this.NodeDomContent.textContent = this.NodeStruct[key];
+    let idx = key.match(/[0-9]/gi);
+    this.NodeDomContents[idx ? idx[0] : 0].textContent = this.NodeStruct[key];
   }
 
   private DecorateNode_itemas(key) {
@@ -215,9 +212,14 @@ export class VirtualNode {
     if (!_nodeStruct) return;
     let value;
     if (this.Parent) value = (this.Parent.NodeDom as any).value;
-    for (const key in _nodeStruct) {
-      let DataType: string = typeof _nodeStruct[key];
-      if (IsNodeAttr(key)) DataType = key;
+    for (let key in _nodeStruct) {
+      let DataType: string = IsNodeAttr(key);
+      let IsAttr = true;
+      if (!DataType) {
+        DataType = typeof _nodeStruct[key];
+        IsAttr = false;
+      }
+
       if (DataType == "object") {
         let ChildrenNode = new VirtualNode(key, this.ModuleInstance)
           .SetParentNode(this)
@@ -226,9 +228,9 @@ export class VirtualNode {
           .Builder();
         if (ChildrenNode) this.Childrens.push(ChildrenNode);
       } else {
+        if (DataType != "function" && !IsAttr) DataType = "default";
         this.NodeStruct[key] = _nodeStruct[key];
         this.InlineValueResolver(key, this.NodeStruct);
-        if (DataType != "function" && DataType != key) DataType = "default";
         if (key == "f") this.LoopTemplate = _nodeStruct;
         this["DecorateNode_" + DataType](key);
       }
@@ -253,6 +255,7 @@ export class VirtualNode {
   }
 
   private DecorateNode_default(key) {
+    if (key == "data_value") return;
     this.NodeDom[key] = this.NodeStruct[key];
   }
 

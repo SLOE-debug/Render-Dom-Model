@@ -1,13 +1,8 @@
-let DataTypes = ["object", "symbol", "undefined"];
 let NodeAttrs = ["f", "itemas", "if", "show", "title", "value"];
 
-export function IsValueType(item): boolean {
-  let DataType = typeof item;
-  return !DataTypes.includes(DataType);
-}
-
-export function IsNodeAttr(key) {
-  return NodeAttrs.includes(key);
+export function IsNodeAttr(key: string) {
+  key = key.replace(/[0-9]|_/gi, "");
+  return NodeAttrs.find((m) => m == key);
 }
 
 export function GetPropByItem(keys, Item: object) {
