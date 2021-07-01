@@ -213,27 +213,24 @@ export class VirtualNode {
     let value;
     if (this.Parent) value = (this.Parent.NodeDom as any).value;
     for (let key in _nodeStruct) {
-      let DataType: string = IsNodeAttr(key);
-      let IsAttr = true;
-      if (!DataType) {
-        DataType = typeof _nodeStruct[key];
-        IsAttr = false;
-      }
+      this.NodeStruct[key] = _nodeStruct[key];
+      this.InlineValueResolver(key, this.NodeStruct);
+      if (key == "f") this.LoopTemplate = _nodeStruct;
+      let KeyType: string = IsNodeAttr(key);
+      let DataType: string = typeof _nodeStruct[key];
 
-      if (DataType == "object") {
+      if (DataType == "object" && !KeyType) {
         let ChildrenNode = new VirtualNode(key, this.ModuleInstance)
           .SetParentNode(this)
           .SetLoopItem(this.LoopInfo.Item)
           .SetNodeStruct(_nodeStruct[key])
           .Builder();
         if (ChildrenNode) this.Childrens.push(ChildrenNode);
-      } else {
-        if (DataType != "function" && !IsAttr) DataType = "default";
-        this.NodeStruct[key] = _nodeStruct[key];
-        this.InlineValueResolver(key, this.NodeStruct);
-        if (key == "f") this.LoopTemplate = _nodeStruct;
-        this["DecorateNode_" + DataType](key);
+        delete this.NodeStruct[key];
+        continue;
       }
+      if (DataType != "function" && !KeyType) DataType = "default";
+      this["DecorateNode_" + (KeyType || DataType)](key);
     }
     if (value != undefined) (this.Parent.NodeDom as any).value = value;
     return this;
