@@ -29,6 +29,7 @@ export class VirtualNode {
   LoopTemplate: object;
   IsLoopTemplate: boolean = false;
   BindProp: { k: string; m: object };
+  LoopTemplates: Array<VirtualNode> = [];
 
   constructor(_nodeName: string, _moduleInstance: RDMModule) {
     this.ModuleInstance = _moduleInstance;
@@ -37,6 +38,11 @@ export class VirtualNode {
     if (_nodeName.search(/h[0-9]/gi) < 0)
       _nodeName = _nodeName.replace(/[0-9]/g, "");
     this.NodeDom = document.createElement(_nodeName);
+  }
+
+  public SetLoopTemplates(_loopTemplates): VirtualNode {
+    this.LoopTemplates = _loopTemplates;
+    return this;
   }
 
   public SetParentNode(_parent: VirtualNode): VirtualNode {
@@ -66,6 +72,7 @@ export class VirtualNode {
       let Brother =
         this.Parent.LoopNodeChildrens[this.Parent.LoopNodeChildrens.length - 1];
       let ChildrenNode = new VirtualNode(this.NodeLocation, this.ModuleInstance)
+        .SetLoopTemplates(this.LoopTemplates)
         .SetParentNode(this.Parent)
         .SetLoopInfoForCurrentNode(
           this.LoopInfo.arr.length - 1,
@@ -93,15 +100,12 @@ export class VirtualNode {
   }
 
   public DiffLoopNode(_modifyInfo: { ActionType: string; params: Array<any> }) {
-    this.Childrens.forEach((c) => c.DiffLoopNode(_modifyInfo));
-    if (this.IsLoopTemplate) {
-      if (this.LoopInfo.arrlen != this.LoopInfo.arr.length) {
-        let value;
-        if (this.Parent) value = (this.Parent.NodeDom as any)["value"];
-        this.LoopInfo.arrlen = this.LoopInfo.arr.length;
-        this["LoopNode_" + _modifyInfo.ActionType](_modifyInfo.params);
-        (this.Parent.NodeDom as any)["value"] = value;
-      }
+    if (this.LoopInfo.arrlen != this.LoopInfo.arr.length) {
+      let value;
+      if (this.Parent) value = (this.Parent.NodeDom as any)["value"];
+      this.LoopInfo.arrlen = this.LoopInfo.arr.length;
+      this["LoopNode_" + _modifyInfo.ActionType](_modifyInfo.params);
+      (this.Parent.NodeDom as any)["value"] = value;
     }
   }
 
@@ -126,6 +130,7 @@ export class VirtualNode {
   }
 
   private DecorateNode_f(_) {
+    this.LoopTemplates.push(this);
     this.IsLoopTemplate = true;
     let arr = this.LoopTemplate["f"];
     this.LoopInfo.arr = arr;
@@ -136,6 +141,7 @@ export class VirtualNode {
     this.Parent.Childrens.push(this);
     for (let i = 0; i < arr.length; i++) {
       let ChildrenNode = new VirtualNode(this.NodeLocation, this.ModuleInstance)
+        .SetLoopTemplates(this.LoopTemplates)
         .SetParentNode(this.Parent)
         .SetLoopInfoForCurrentNode(i, arr, null)
         .SetNodeStruct(this.LoopTemplate)
@@ -221,6 +227,7 @@ export class VirtualNode {
 
       if (DataType == "object" && !KeyType) {
         let ChildrenNode = new VirtualNode(key, this.ModuleInstance)
+          .SetLoopTemplates(this.LoopTemplates)
           .SetParentNode(this)
           .SetLoopItem(this.LoopInfo.Item)
           .SetNodeStruct(_nodeStruct[key])

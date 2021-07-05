@@ -27,12 +27,13 @@ export default class RDM {
     return function () {
       let FuncArgs = Array.from(arguments);
       ArrFunc.apply(this, FuncArgs);
-      _self.RootNodes.forEach((n) => {
-        n.DiffLoopNode({
-          ActionType: ArrFunc.name,
-          params: FuncArgs,
+      if (_self.RootNodes.length)
+        _self.RootNodes[0].LoopTemplates.forEach((m) => {
+          m.DiffLoopNode({
+            ActionType: ArrFunc.name,
+            params: FuncArgs,
+          });
         });
-      });
       if (_self.LazyUpdate) clearTimeout(_self.LazyUpdate);
       _self.LazyUpdate = setTimeout(() => {
         let NewNodeStruct = _self.ModuleInstance.Render();
