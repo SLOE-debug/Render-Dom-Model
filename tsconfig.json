@@ -1,7 +1,7 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "outDir": "./dist/", // 打包到的目录
+    "outDir": "./dist/", // 打包到的目录a
     "sourceMap": false, // 是否生成sourceMap（用于浏览器调试）
     "noImplicitAny": false,
     "noUnusedParameters": true,
