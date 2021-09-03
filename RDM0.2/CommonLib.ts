@@ -5,6 +5,34 @@ export function IsNodeAttr(key: string) {
   return NodeAttrs.find((m) => m == key);
 }
 
+export function GetGuid() {
+  function S4() {
+    return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+  }
+  return (
+    S4() +
+    S4() +
+    "-" +
+    S4() +
+    "-" +
+    S4() +
+    "-" +
+    S4() +
+    "-" +
+    S4() +
+    S4() +
+    S4()
+  );
+}
+
+export function markRDM(
+  target: any,
+  propertyKey: string,
+  descriptor: PropertyDescriptor
+) {
+  descriptor.value["mark"] = target.constructor.name;
+}
+
 export function GetPropByItem(keys, Item: object) {
   let v = Item;
   let m;

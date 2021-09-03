@@ -10,7 +10,7 @@ export default class example extends RDMModule {
 
   constructor() {
     super();
-    for (let i = 0; i < 5000; i++) {
+    for (let i = 0; i < 10000; i++) {
       let num = Math.random();
       this.arr.push({ value: num, if: true });
     }

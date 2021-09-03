@@ -1,5 +1,5 @@
 import { RDMModule } from "./AllBasicTypes";
-import { GetPropByItem, IsNodeAttr } from "./CommonLib";
+import { GetGuid, IsNodeAttr, markRDM } from "./CommonLib";
 
 export class VirtualNode {
   Childrens: Array<VirtualNode> = [];
@@ -30,19 +30,22 @@ export class VirtualNode {
   IsLoopTemplate: boolean = false;
   BindProp: { k: string; m: object };
   LoopTemplates: Array<VirtualNode> = [];
+  ID: string;
 
-  constructor(_nodeName: string, _moduleInstance: RDMModule) {
+  constructor(
+    _nodeName: string,
+    _moduleInstance: RDMModule,
+    _loopTemplates: Array<VirtualNode>
+  ) {
+    this.LoopTemplates = _loopTemplates;
     this.ModuleInstance = _moduleInstance;
     this.NodeLocation = _nodeName;
     _nodeName = _nodeName.replace(/_/g, "");
     if (_nodeName.search(/h[0-9]/gi) < 0)
       _nodeName = _nodeName.replace(/[0-9]/g, "");
     this.NodeDom = document.createElement(_nodeName);
-  }
-
-  public SetLoopTemplates(_loopTemplates): VirtualNode {
-    this.LoopTemplates = _loopTemplates;
-    return this;
+    this.ID = GetGuid();
+    (this.InlineValueResolver as any).Instance = this;
   }
 
   public SetParentNode(_parent: VirtualNode): VirtualNode {
@@ -71,8 +74,11 @@ export class VirtualNode {
     _params.forEach(() => {
       let Brother =
         this.Parent.LoopNodeChildrens[this.Parent.LoopNodeChildrens.length - 1];
-      let ChildrenNode = new VirtualNode(this.NodeLocation, this.ModuleInstance)
-        .SetLoopTemplates(this.LoopTemplates)
+      let ChildrenNode = new VirtualNode(
+        this.NodeLocation,
+        this.ModuleInstance,
+        this.LoopTemplates
+      )
         .SetParentNode(this.Parent)
         .SetLoopInfoForCurrentNode(
           this.LoopInfo.arr.length - 1,
@@ -140,8 +146,11 @@ export class VirtualNode {
       this.Parent.Childrens[this.Parent.Childrens.length - 1];
     this.Parent.Childrens.push(this);
     for (let i = 0; i < arr.length; i++) {
-      let ChildrenNode = new VirtualNode(this.NodeLocation, this.ModuleInstance)
-        .SetLoopTemplates(this.LoopTemplates)
+      let ChildrenNode = new VirtualNode(
+        this.NodeLocation,
+        this.ModuleInstance,
+        this.LoopTemplates
+      )
         .SetParentNode(this.Parent)
         .SetLoopInfoForCurrentNode(i, arr, null)
         .SetNodeStruct(this.LoopTemplate)
@@ -226,8 +235,11 @@ export class VirtualNode {
       let DataType: string = typeof _nodeStruct[key];
 
       if (DataType == "object" && !KeyType) {
-        let ChildrenNode = new VirtualNode(key, this.ModuleInstance)
-          .SetLoopTemplates(this.LoopTemplates)
+        let ChildrenNode = new VirtualNode(
+          key,
+          this.ModuleInstance,
+          this.LoopTemplates
+        )
           .SetParentNode(this)
           .SetLoopItem(this.LoopInfo.Item)
           .SetNodeStruct(_nodeStruct[key])
@@ -247,15 +259,54 @@ export class VirtualNode {
     if (typeof Item[key] != "string") return;
     if (Item[key].indexOf("{") < 0) return;
     let InlinePlaceholders = Item[key].match(/(?<={).*.?(?=})/gi);
-    InlinePlaceholders?.forEach((m) => {
+    if (!InlinePlaceholders) return;
+    if (!this.LoadComplete) (this.InlineValueResolver as any).mark = true;
+    for (let i = 0; i < InlinePlaceholders.length; i++) {
+      let m = InlinePlaceholders[i];
       try {
-        let PropValue = GetPropByItem(m, this.ModuleInstance);
-        if (PropValue.v == undefined)
-          PropValue = GetPropByItem(m, this.LoopInfo.Item);
-        if (key == "value") this.BindProp = { k: PropValue.k, m: PropValue.m };
-        Item[key] = Item[key].replace(`{${m}}`, PropValue.v);
+        let preProp = "";
+        let modifyk = m;
+        if (m.indexOf(".") >= 0) {
+          preProp = m.substr(0, m.indexOf("."));
+          modifyk = m.replace(preProp + ".", "");
+        }
+
+        let v = "";
+        try {
+          v = new Function(`return this.ModuleInstance.${m}`).apply(this);
+          if (v == undefined || v == null) throw "";
+        } catch (error) {
+          v = new Function(`return this.LoopInfo.Item.${m}`).apply(this);
+        }
+        let pre = this.ModuleInstance;
+        if (preProp) {
+          try {
+            pre = new Function(`return this.ModuleInstance.${preProp}`).apply(
+              this
+            );
+            if (pre == undefined || pre == null) throw "";
+          } catch (error) {
+            pre = new Function(`return this.LoopInfo.Item.${preProp}`).apply(
+              this
+            );
+          }
+        }
+
+        if (key == "value") this.BindProp = { k: modifyk, m: pre };
+        Item[key] = Item[key].replace(`{${m}}`, v);
       } catch (error) {}
-    });
+    }
+    delete (this.InlineValueResolver as any).mark;
+    return;
+    // InlinePlaceholders?.forEach((m) => {
+    //   try {
+    //     let PropValue = GetPropByItem(m, this.ModuleInstance);
+    //     if (PropValue.v == undefined)
+    //       PropValue = GetPropByItem(m, this.LoopInfo.Item);
+    //     if (key == "value") this.BindProp = { k: PropValue.k, m: PropValue.m };
+    //     Item[key] = Item[key].replace(`{${m}}`, PropValue.v);
+    //   } catch (error) {}
+    // });
   }
 
   private DecorateNode_default(key) {
