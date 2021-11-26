@@ -59,7 +59,6 @@ export default class RDM {
           if (args.callee.caller.caller) {
             if (args.callee.caller.caller["mark"]) {
               Nodes.push(args.callee.caller.caller["Instance"]);
-              // console.log(key, Nodes);
             }
           }
           return OldValue;

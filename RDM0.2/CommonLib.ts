@@ -25,14 +25,6 @@ export function GetGuid() {
   );
 }
 
-export function markRDM(
-  target: any,
-  propertyKey: string,
-  descriptor: PropertyDescriptor
-) {
-  descriptor.value["mark"] = target.constructor.name;
-}
-
 export function GetPropByItem(keys, Item: object) {
   let v = Item;
   let m;

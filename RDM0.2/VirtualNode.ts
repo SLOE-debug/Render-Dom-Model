@@ -1,5 +1,5 @@
 import { RDMModule } from "./AllBasicTypes";
-import { GetGuid, IsNodeAttr, markRDM } from "./CommonLib";
+import { GetGuid, GetPropByItem, IsNodeAttr } from "./CommonLib";
 
 export class VirtualNode {
   Childrens: Array<VirtualNode> = [];
@@ -251,7 +251,7 @@ export class VirtualNode {
       if (DataType != "function" && !KeyType) DataType = "default";
       this["DecorateNode_" + (KeyType || DataType)](key);
     }
-    if (value != undefined) (this.Parent.NodeDom as any).value = value;
+    if (!!value) (this.Parent.NodeDom as any).value = value;
     return this;
   }
 
@@ -297,7 +297,7 @@ export class VirtualNode {
       } catch (error) {}
     }
     delete (this.InlineValueResolver as any).mark;
-    return;
+    // return;
     // InlinePlaceholders?.forEach((m) => {
     //   try {
     //     let PropValue = GetPropByItem(m, this.ModuleInstance);
