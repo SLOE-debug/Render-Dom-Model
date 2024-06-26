@@ -1,26 +1,47 @@
-import { VNodeTuple, def, render } from "../RDM0.4/render";
+import { VNodeTuple, Def, Render } from "../RDM0.4/render";
 
-const data = def({
+const data = Def({
   value: "test",
-  /// 是否渲染
-  cond: true,
+  // 是否显示（显示/隐藏 input）
+  show: true,
+  // 是否渲染 input
+  renderInput: true,
 });
 
 let nodes: VNodeTuple = [
-  (cond) => data.cond,
   "button",
   {
-    onclick: () => {
-      data.value = Math.random().toString();
+    onClick: () => {
+      data.show = !data.show;
     },
-    textContent: "按钮",
+    textContent: "显示/隐藏（显示/隐藏 input）",
   },
   [],
-  "span",
+  (cond) => data.show,
+  "div",
   {
-    textContent: data.value,
+    onClick: () => {
+      data.renderInput = !data.renderInput;
+    },
+    textContent: "显示/隐藏 input",
   },
   [],
 ];
 
-render(nodes);
+for (let i = 0; i < 2500; i++) {
+  (nodes[6] as VNodeTuple).push(
+    ...[
+      (cond) => data.renderInput,
+      "input",
+      {
+        value: () => data.value,
+        onInput: (e) => {
+          data.value = e.target.value;
+        },
+      },
+      [],
+    ]
+  );
+}
+
+Render(nodes);
