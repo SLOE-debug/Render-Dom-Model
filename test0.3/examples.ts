@@ -1,5 +1,5 @@
 import { def, r, render } from "../RDM0.3/render";
-import { NodeStructure, ObjectStructure } from "../RDM0.3/typeLib";
+import { NodeStructure } from "../RDM0.3/types";
 
 function div(props: any): NodeStructure {
   let divData = def({

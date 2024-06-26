@@ -6,4 +6,5 @@
 // import example from "./test0.2/example";
 
 // new RDM(example);
-import "./test0.3/examples";
+// import "./test0.3/examples";
+import './test0.4/index'

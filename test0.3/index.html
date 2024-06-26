@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+
+  <body>
+    <script>
+      function handleObjectStructure(node) {
+        let dom = document.createElement(node.t);
+        if (dom.nodeName == "INPUT" && "value" in node) {
+          dom.addEventListener("input", () => {
+            node.value = dom.value;
+          });
+        }
+        for (const key in node) {
+          let attrType = typeof node[key];
+          switch (attrType) {
+            case "function":
+              dom.addEventListener(key, node[key]);
+              break;
+            case "object":
+              if (key == "data") break;
+              let propDes = Object.getOwnPropertyDescriptor(node[key], key);
+              let v;
+              try {
+                v = propDes["get"](dom);
+              } catch {
+                v = node[key][key];
+              }
+              if (key in dom) {
+                dom[key] = v;
+              }
+              break;
+            default:
+              if (key in dom) {
+                dom[key] = node[key];
+              }
+              break;
+          }
+        }
+        return dom;
+      }
+
+      function r($exp) {
+        return {
+          $exp,
+        };
+      }
+
+      function def(data) {
+        let rel = {};
+        for (const key in data) {
+          let doms = [];
+          let temp = data[key];
+          Object.defineProperty(data, key, {
+            get(n) {
+              if (n && n != 1) doms.push(n);
+              if (Object.prototype.hasOwnProperty.call(temp, "$exp")) {
+                let tempExp = temp.$exp;
+                tempExp.match(/(?<=<).*?(?=>)/gi).forEach((m) => {
+                  tempExp = tempExp.replace(new RegExp(`<${m}>`), data[m]);
+                  if (rel[m]) rel[m][key] = key;
+                  else
+                    rel[m] = {
+                      [key]: key,
+                    };
+                });
+                if (n == 1) {
+                  doms.forEach((n) => {
+                    if (key in n) {
+                      n[key] = tempExp;
+                    }
+                  });
+                }
+                return tempExp;
+              }
+              return temp;
+            },
+            set(v) {
+              temp = v;
+              doms.forEach((n) => {
+                if (key in n) {
+                  n[key] = v;
+                }
+              });
+              if (rel[key]) {
+                for (const k in rel[key]) {
+                  let propDes = Object.getOwnPropertyDescriptor(data, k);
+                  propDes.get(1);
+                }
+              }
+            },
+          });
+        }
+        return data;
+      }
+
+      function render(nodeStructures, parent) {
+        nodeStructures.forEach((m) => {
+          if (m) {
+            let type = typeof m;
+            let dom;
+            switch (type) {
+              case "string":
+                dom = document.createElement(m.toString());
+                break;
+              case "object":
+                if (Array.isArray(m)) {
+                  render(m, parent);
+                } else {
+                  dom = handleObjectStructure(m);
+                }
+                break;
+              default:
+                break;
+            }
+            if (dom) (parent ? parent : document.body).appendChild(dom);
+          }
+        });
+      }
+
+      function div(props) {
+        let divData = def({
+          style: r("background-color:<color>;display: inline;cursor: pointer;"),
+          color: "#00ADAD",
+          textContent: r(`第${props.i}个div，颜色<color>`),
+        });
+        return {
+          t: "div",
+          style: divData,
+          textContent: divData,
+          mouseenter() {
+            divData.color = "#CC5C1E";
+          },
+          mouseleave() {
+            divData.color = "#00ADAD";
+          },
+        };
+      }
+
+      let data = def({
+        value: "点击改变为随机值",
+        className: r("<pre>-<content>"),
+        pre: "pre",
+        content: "m",
+        textContent: "按钮",
+      });
+      function input() {
+        return [
+          {
+            t: "input",
+            value: data,
+            className: data,
+            click() {
+              setInterval(() => {
+                data.content = Math.random().toFixed(2);
+                data.value = Math.random().toFixed(2);
+                data.textContent = Math.random().toFixed(2);
+              }, 100);
+            },
+            input() {
+              console.log(data.value);
+            },
+          },
+          {
+            t: "button",
+            textContent: data,
+            click() {
+              data.textContent = "测试";
+              data.value = "mmmm";
+            },
+          },
+        ];
+      }
+
+      let nodes = [];
+      for (let i = 0; i <= 500; i++) {
+        nodes.push(
+          i >= 250
+            ? div({
+                i,
+              })
+            : input()
+        );
+      }
+
+      render([
+        {
+          t: "h1",
+          textContent: "这里有一千个div和一千个input",
+        },
+        nodes,
+      ]);
+    </script>
+  </body>
+</html>

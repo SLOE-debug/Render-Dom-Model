@@ -1,4 +1,4 @@
-import { NodeStructure, ObjectStructure } from "./typeLib";
+import { NodeStructure, ObjectStructure } from "./types";
 
 function handleObjectStructure(node: ObjectStructure): HTMLElement {
   let dom = document.createElement(node.t);
