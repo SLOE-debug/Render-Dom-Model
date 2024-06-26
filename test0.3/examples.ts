@@ -20,14 +20,14 @@ function div(props: any): NodeStructure {
   };
 }
 
-let data = def({
-  value: "点击改变为随机值",
-  className: r("<pre>-<content>"),
-  pre: "pre",
-  content: "m",
-  textContent: "按钮",
-});
 function input(): NodeStructure {
+  let data = def({
+    value: "点击改变为随机值",
+    className: r("<pre>-<content>"),
+    pre: "pre",
+    content: "m",
+    textContent: "按钮",
+  });
   return [
     {
       t: "input",
@@ -56,14 +56,14 @@ function input(): NodeStructure {
 }
 
 let nodes = [];
-for (let i = 0; i <= 200; i++) {
-  nodes.push(i >= 100 ? div({ i }) : input());
+for (let i = 0; i <= 2000; i++) {
+  nodes.push(i >= 1000 ? div({ i }) : input());
 }
 
 render([
   {
     t: "h1",
-    textContent: "这里有一百个div和一百个input",
+    textContent: "这里有一千个div和一千个input",
   },
   nodes,
 ]);
