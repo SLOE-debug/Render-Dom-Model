@@ -1,5 +1,5 @@
 const path = require("path");
-const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   mode: "development", // production
@@ -18,10 +18,6 @@ module.exports = {
           },
           {
             loader: "ts-loader",
-            options: {
-              // 指定特定的ts编译配置，为了区分脚本的ts配置
-              configFile: path.resolve(__dirname, "./tsconfig.json"),
-            },
           },
         ],
         exclude: /node_modules/,
@@ -29,7 +25,11 @@ module.exports = {
       { test: /\.css$/, use: ["style-loader", "css-loader"] },
     ],
   },
-  plugins: [new CleanWebpackPlugin({ cleanOnceBeforeBuildPatterns: ["*.js"] })],
+  plugins: [
+    new CopyWebpackPlugin({
+      patterns: [{ from: "src/index.html", to: "index.html" }],
+    }),
+  ],
   resolve: {
     extensions: [".ts", ".js"],
   },

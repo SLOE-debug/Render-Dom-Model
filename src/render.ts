@@ -1,22 +1,32 @@
 /**
  * 代理data
  */
-export function Def<T>(data: T): T {
+export function Def<T>(data: T, parentPath: string = ""): T {
   // key2node Map
   let key2node = new Map<string, { key: string; element: HTMLElement }[]>();
   // key2IdentifierFunction Map
   let key2IdentifierFunction = new Map<string, Function[]>();
 
   for (const key in data) {
+    // 如果是数组，则遍历数组，递归代理
+    if (Array.isArray(data[key])) {
+      data[key] = Def(data[key], parentPath + key + ".");
+    }
+
+    let type = typeof data[key];
+    if (type == "function") continue;
+
     let value = data[key];
     delete data[key];
     Object.defineProperty(data, key, {
       get() {
         if (!isHandlingIdentifierFunction) {
-          let node = GetCurrentNode();
+          let node = GetCurrentNode?.();
           if (node) {
+            let { element, isUnmount } = node;
             let nodes = key2node.get(key) || [];
-            nodes.push(node);
+            if (isUnmount) nodes = nodes.filter((node) => node.element != element);
+            else nodes.push(node);
             key2node.set(key, nodes);
           }
         } else {
@@ -25,7 +35,7 @@ export function Def<T>(data: T): T {
           // 获取当前标记函数的标记
           const identifier = identifierFunction.GetIdentifier();
           switch (identifier) {
-            case IdentifierEnum.cond:
+            case IdentifierEnum.i:
               let funcs = key2IdentifierFunction.get(key) || [];
               funcs.push(identifierFunction);
               key2IdentifierFunction.set(key, funcs);
@@ -58,14 +68,12 @@ export function Def<T>(data: T): T {
 export type VNodeTuple = (Function | string | Record<string, any> | VNodeTuple)[];
 
 // 当前正在使用代理 data 的Element节点
-let GetCurrentNode = function (): { key: string; element: HTMLElement } | null {
-  return null;
-};
+let GetCurrentNode: () => { key: string; element: HTMLElement; isUnmount: boolean } | null = null;
 
 /**
  * render渲染器
  */
-export function Render(nodes: VNodeTuple, parent: HTMLElement = document.body) {
+export function Render(nodes: VNodeTuple, parent: HTMLElement = document.body, isUnmount = false) {
   if (nodes.length === 0) return;
 
   // 副本 nodes
@@ -82,7 +90,7 @@ export function Render(nodes: VNodeTuple, parent: HTMLElement = document.body) {
       let lackNodes = duplicate.splice(0, lackCount);
       node.push(...lackNodes);
     }
-    RenderVNode(node, parent);
+    RenderVNode(node, parent, isUnmount);
   }
 }
 
@@ -90,20 +98,22 @@ export function Render(nodes: VNodeTuple, parent: HTMLElement = document.body) {
  * 渲染VNode
  * @param node VNode
  * @param parent 父节点
- * @param isUnmount 是否卸载当前节点
  */
-function RenderVNode(node: VNodeTuple, parent: HTMLElement, isUnmount = false) {
+function RenderVNode(node: VNodeTuple, parent: HTMLElement, isUnmount = false, item: Function = null) {
   const tag = node[0] as string;
   const props = node[1] as Record<string, any>;
   const children = node[2] as VNodeTuple;
 
   let identifierFunction = identifierFunctions.last();
+
   // 原el
   let el = identifierFunction?.el;
-  // 如果 el 已经脱离文档了
-  if (el && !parent.contains(el)) {
-    el.remove();
-    el = null;
+
+  // 如果在此处isUnmount 就是true，说明其父节点已被卸载，直接卸载当前节点
+  if (isUnmount) {
+    if (identifierFunction) {
+      identifierFunction.el = null;
+    }
   }
 
   if (identifierFunction) {
@@ -112,24 +122,29 @@ function RenderVNode(node: VNodeTuple, parent: HTMLElement, isUnmount = false) {
 
     // 获取当前标记函数的标记
     let identifier = identifierFunction.GetIdentifier();
-    let result = identifierFunction.result !== undefined ? identifierFunction.result : identifierFunction();
-    delete identifierFunction.result;
+    let result = identifierFunction();
     switch (identifier) {
-      case IdentifierEnum.cond:
+      case IdentifierEnum.i:
         if (result == false) {
           // 插入注释节点
-          let comment = document.createComment("cond");
-          // 替换当前el
-          el ? parent.replaceChild(comment, el) : parent.appendChild(comment);
-          identifierFunction.el = comment;
+          let comment = document.createComment("if");
+          // 如果当前的 el 不是注释节点，则替换当前el
+          if (el && el.nodeType !== Node.COMMENT_NODE) {
+            // 替换当前el
+            el ? parent.replaceChild(comment, el) : parent.appendChild(comment);
+            identifierFunction.el = comment;
+          }
           isUnmount = true;
         }
+        break;
+      case IdentifierEnum.f:
+        identifierFunctions = [];
+        for (let i = 0; i < result.length; i++) {
+          let m = () => result[i];
+          RenderVNode([...node], parent, isUnmount, m);
+        }
+        return;
     }
-  }
-
-  if (isUnmount) {
-    // 应卸载当前节点和子节点
-    return;
   }
 
   const element = document.createElement(tag);
@@ -141,31 +156,36 @@ function RenderVNode(node: VNodeTuple, parent: HTMLElement, isUnmount = false) {
     if (isGetter) {
       GetCurrentNode = () => ({
         key,
-        element,
+        element: isUnmount ? (el as HTMLElement) : element,
+        isUnmount,
       });
-      element[key] = props[key]();
+      element[key] = props[key](item?.());
     } else {
       // 如果是事件
       if (isEvent) {
-        element.addEventListener(key.slice(2).toLowerCase(), props[key]);
+        element[isUnmount ? "removeEventListener" : "addEventListener"](key.slice(2).toLowerCase(), props[key]);
       } else {
         element[key] = props[key];
       }
     }
   }
-  GetCurrentNode = () => null;
-  // 如果存在el（即注释节点），则替换el，否则直接插入
-  el ? parent.replaceChild(element, el) : parent.appendChild(element);
+  GetCurrentNode = null;
+  if (!isUnmount) {
+    // 如果存在el（即注释节点），则替换el，否则直接插入
+    el ? parent.replaceChild(element, el) : parent.appendChild(element);
 
-  identifierFunction && (identifierFunction.el = element);
+    identifierFunction && (identifierFunction.el = element);
+  }
   identifierFunctions = [];
-  Render(children, element);
+  Render(children, element, isUnmount);
 }
 
 // 标记枚举
 export enum IdentifierEnum {
-  // cond标记，表示该节点依据该标记的值来渲染
-  cond = "cond",
+  // i标记（i的缩写），表示该节点依据该标记的值来渲染
+  i = "i",
+  // f标记（for的缩写），表示该节点依据该标记的值来循环渲染
+  f = "f",
 }
 
 /**
@@ -189,9 +209,7 @@ export function identifierFunctionHandler(node: VNodeTuple) {
 
     identifierFunctions.push(identifierFunction);
     // 执行标记函数
-    let result = identifierFunction();
-    // 缓存标记函数的结果
-    identifierFunction.result = result;
+    identifierFunction();
   }
   isHandlingIdentifierFunction = false;
 }

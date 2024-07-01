@@ -1,4 +1,4 @@
-import { IdentifierEnum, VNodeTuple } from "RDM0.4/render";
+import { IdentifierEnum, VNodeTuple } from "./src/render";
 
 // 扩展Function
 declare global {
@@ -19,10 +19,6 @@ declare global {
      * 当前标记函数的标记缓存
      */
     identifier: IdentifierEnum;
-    /**
-     * 当前标记函数的结果缓存
-     */
-    result: any;
   }
   interface Array<T> {
     /**
@@ -56,4 +52,4 @@ Function.prototype.GetIdentifier = function () {
   return identifier;
 };
 
-import "./test0.4/index";
+import "./src/index";
